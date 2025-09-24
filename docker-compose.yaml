@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  resource_db:
+    image: postgres:15
+    container_name: resource_db_container
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: resource_db
+    ports:
+      - "5433:5432"
+    restart: unless-stopped
+
+  logging_db:
+    image: postgres:15
+    container_name: logging_db_container
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: logging_db
+    ports:
+      - "5434:5432"
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: user
+      RABBITMQ_DEFAULT_PASS: password
+
+  resource-api:
+    build:
+      context: .
+      dockerfile: ./resource-api/Dockerfile
+    container_name: resource_api_container
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://resource_db:5432/resource_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: user
+      SPRING_RABBITMQ_PASSWORD: password
+    depends_on:
+      - resource_db
+      - rabbitmq
+    restart: unless-stopped
+
+  logging-service:
+    build:
+      context: .
+      dockerfile: ./logging-service/Dockerfile
+    container_name: logging_service_container
+    ports:
+      - "8081:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://logging_db:5432/logging_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: user
+      SPRING_RABBITMQ_PASSWORD: password
+    depends_on:
+      - logging_db
+      - rabbitmq
+    restart: unless-stopped
